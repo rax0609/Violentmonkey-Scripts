@@ -33,6 +33,25 @@ let divShowStatus;
 // 全局變量，用於存儲控制面板和恢復按鈕的引用
 let buttonContainer, toggleButton;
 
+const buttonTexts = {
+  autoAnswer: {
+    start: "自動答題",
+    stop: "停止答題",
+  },
+  autoNextQuestion: {
+    start: "自動下一題",
+    stop: "停止下一題",
+  },
+  autoNextExercise: {
+    start: "自動下一題組",
+    stop: "停止下一題組",
+  },
+  autoRepeatAnswers: {
+    start: "重複作答",
+    stop: "停止重複作答",
+  },
+};
+
 // 新增: 創建樣式表
 function createGlobalStyles() {
   const styleSheet = document.createElement("style");
@@ -588,7 +607,7 @@ function createToggleButton() {
 
   const buttons = [
     {
-      text: autoAnswer ? "停止答題" : "自動答題",
+      text: autoAnswer ? buttonTexts.autoAnswer.stop : buttonTexts.autoAnswer.start,
       state: autoAnswer,
       onClick: () => {
         autoAnswer = !autoAnswer;
@@ -596,13 +615,13 @@ function createToggleButton() {
         Promise.resolve().then(() => {
           botoperate();
         });
-        return autoAnswer ? "停止答題" : "自動答題";
+        return autoAnswer ? buttonTexts.autoAnswer.stop : buttonTexts.autoAnswer.start;
       },
       delay: answerDelay,
       delayKey: "answerDelay",
     },
     {
-      text: autoNextQuestion ? "停止下一題" : "自動下一題",
+      text: autoNextQuestion ? buttonTexts.autoNextQuestion.stop : buttonTexts.autoNextQuestion.start,
       state: autoNextQuestion,
       onClick: () => {
         autoNextQuestion = !autoNextQuestion;
@@ -610,13 +629,13 @@ function createToggleButton() {
         Promise.resolve().then(() => {
           botoperate();
         });
-        return autoNextQuestion ? "停止下一題" : "自動下一題";
+        return autoNextQuestion ? buttonTexts.autoNextQuestion.stop : buttonTexts.autoNextQuestion.start;
       },
       delay: nextQuestionDelay,
       delayKey: "nextQuestionDelay",
     },
     {
-      text: autoNextExercise ? "停止下一題集" : "自動下一題集",
+      text: autoNextExercise ? buttonTexts.autoNextExercise.stop : buttonTexts.autoNextExercise.start,
       state: autoNextExercise,
       onClick: () => {
         autoNextExercise = !autoNextExercise;
@@ -624,13 +643,13 @@ function createToggleButton() {
         Promise.resolve().then(() => {
           botoperate();
         });
-        return autoNextExercise ? "停止下一題集" : "自動下一題集";
+        return autoNextExercise ? buttonTexts.autoNextExercise.stop : buttonTexts.autoNextExercise.start;
       },
       delay: nextExerciseDelay,
       delayKey: "nextExerciseDelay",
     },
     {
-      text: autoRepeatAnswers ? "停止重複作答" : "重複作答",
+      text: autoRepeatAnswers ? buttonTexts.autoRepeatAnswers.stop : buttonTexts.autoRepeatAnswers.start,
       state: autoRepeatAnswers,
       onClick: () => {
         autoRepeatAnswers = !autoRepeatAnswers;
@@ -638,7 +657,7 @@ function createToggleButton() {
         Promise.resolve().then(() => {
           botoperate();
         });
-        return autoRepeatAnswers ? "停止重複作答" : "重複作答";
+        return autoRepeatAnswers ? buttonTexts.autoRepeatAnswers.stop : buttonTexts.autoRepeatAnswers.start;
       },
       delay: repeatAnswersDelay,
       delayKey: "repeatAnswersDelay",
@@ -1017,7 +1036,7 @@ function botoperate() {
       if (qnumber + 1 === totalqnumbers) {
         let nextButton = document.querySelector("#next_exercise_btn");
         if (nextButton) {
-          console.log("執行: 點擊下一題集按鈕");
+          console.log("執行: 點擊下一題組按鈕");
           nextButton.click();
         }
       }
