@@ -16,13 +16,19 @@ let autoNextQuestion = GM_getValue("autoNextQuestion", false);
 let autoRepeatAnswers = GM_getValue("autoRepeatAnswers", false);
 let isControlPanelMinimized = GM_getValue("isMinimized", false);
 let buttonOrder = GM_getValue("buttonOrder", [0, 1, 2, 3]); // 新增：儲存按鈕順序
-let restoreButtonPosition = GM_getValue("restoreButtonPosition", { top: "20px", left: "20px" });
+let restoreButtonPosition = GM_getValue("restoreButtonPosition", {
+  top: "20px",
+  left: "20px",
+});
 
 let answerDelay = GM_getValue("answerDelay", 500);
 let nextExerciseDelay = GM_getValue("nextExerciseDelay", 500);
 let nextQuestionDelay = GM_getValue("nextQuestionDelay", 500);
 let repeatAnswersDelay = GM_getValue("repeatAnswersDelay", 500);
 
+let correctAnswerDiv;
+let completedAllDiv;
+let retakeanswerDiv;
 // 全局變量，用於存儲控制面板和恢復按鈕的引用
 let buttonContainer, toggleButton;
 
@@ -269,10 +275,13 @@ function createGlobalStyles() {
 
 // 改進的拖動功能，讓元素實時跟隨滑鼠位置
 function makeElementDraggable(element) {
-  let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+  let pos1 = 0,
+    pos2 = 0,
+    pos3 = 0,
+    pos4 = 0;
   let isDragging = false;
 
-  element.addEventListener('mousedown', dragMouseDown);
+  element.addEventListener("mousedown", dragMouseDown);
 
   function dragMouseDown(e) {
     e.preventDefault();
@@ -281,13 +290,13 @@ function makeElementDraggable(element) {
     pos4 = e.clientY;
 
     // 添加鼠標移動和鬆開事件
-    document.addEventListener('mousemove', elementDrag);
-    document.addEventListener('mouseup', closeDragElement);
+    document.addEventListener("mousemove", elementDrag);
+    document.addEventListener("mouseup", closeDragElement);
 
     // 添加拖動時的視覺效果
-    element.style.cursor = 'grabbing';
-    element.style.opacity = '0.9';
-    element.style.transition = 'none';
+    element.style.cursor = "grabbing";
+    element.style.opacity = "0.9";
+    element.style.transition = "none";
     isDragging = true;
   }
 
@@ -302,8 +311,8 @@ function makeElementDraggable(element) {
     pos4 = e.clientY;
 
     // 直接設置元素位置為滑鼠位置減去偏移
-    element.style.top = (e.clientY - 25) + "px"; // 25是偏移量，可以調整
-    element.style.left = (e.clientX - 25) + "px"; // 25是偏移量，可以調整
+    element.style.top = e.clientY - 25 + "px"; // 25是偏移量，可以調整
+    element.style.left = e.clientX - 25 + "px"; // 25是偏移量，可以調整
 
     // 確保按鈕不會超出視窗範圍
     const rect = element.getBoundingClientRect();
@@ -318,20 +327,20 @@ function makeElementDraggable(element) {
     // 保存位置到全局變量和 GM_setValue
     restoreButtonPosition = {
       top: element.style.top,
-      left: element.style.left
+      left: element.style.left,
     };
     GM_setValue("restoreButtonPosition", restoreButtonPosition);
   }
 
   function closeDragElement() {
     // 移除事件監聽器
-    document.removeEventListener('mousemove', elementDrag);
-    document.removeEventListener('mouseup', closeDragElement);
+    document.removeEventListener("mousemove", elementDrag);
+    document.removeEventListener("mouseup", closeDragElement);
 
     // 恢復正常視覺效果
-    element.style.cursor = 'pointer';
-    element.style.opacity = '1';
-    element.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+    element.style.cursor = "pointer";
+    element.style.opacity = "1";
+    element.style.transition = "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
     isDragging = false;
   }
 }
@@ -355,7 +364,7 @@ function calculateOptimalPanelPosition(buttonRect) {
   let bestDirection = "right"; // 默認向右
   let bestPosition = {
     top: buttonRect.top + "px",
-    left: buttonRect.left + "px"
+    left: buttonRect.left + "px",
   };
 
   // 檢查右側空間
@@ -363,7 +372,7 @@ function calculateOptimalPanelPosition(buttonRect) {
     bestDirection = "right";
     bestPosition = {
       top: buttonRect.top + "px",
-      left: buttonRect.left + "px"
+      left: buttonRect.left + "px",
     };
   }
   // 檢查左側空間
@@ -371,7 +380,7 @@ function calculateOptimalPanelPosition(buttonRect) {
     bestDirection = "left";
     bestPosition = {
       top: buttonRect.top + "px",
-      left: (buttonRect.left - panelWidth + buttonRect.width) + "px"
+      left: buttonRect.left - panelWidth + buttonRect.width + "px",
     };
   }
   // 檢查底部空間
@@ -379,15 +388,17 @@ function calculateOptimalPanelPosition(buttonRect) {
     bestDirection = "bottom";
     bestPosition = {
       top: buttonRect.top + "px",
-      left: Math.max(0, Math.min(buttonRect.left, windowWidth - panelWidth)) + "px"
+      left:
+        Math.max(0, Math.min(buttonRect.left, windowWidth - panelWidth)) + "px",
     };
   }
   // 檢查頂部空間
   else if (spaceTop >= panelHeight) {
     bestDirection = "top";
     bestPosition = {
-      top: (buttonRect.top - panelHeight + buttonRect.height) + "px",
-      left: Math.max(0, Math.min(buttonRect.left, windowWidth - panelWidth)) + "px"
+      top: buttonRect.top - panelHeight + buttonRect.height + "px",
+      left:
+        Math.max(0, Math.min(buttonRect.left, windowWidth - panelWidth)) + "px",
     };
   }
   // 如果所有方向都沒有足夠空間，選擇最大的方向
@@ -396,36 +407,40 @@ function calculateOptimalPanelPosition(buttonRect) {
       { direction: "right", space: spaceRight },
       { direction: "left", space: spaceLeft },
       { direction: "bottom", space: spaceBottom },
-      { direction: "top", space: spaceTop }
+      { direction: "top", space: spaceTop },
     ];
 
     spaces.sort((a, b) => b.space - a.space);
     bestDirection = spaces[0].direction;
 
     // 根據最佳方向設置位置
-    switch(bestDirection) {
+    switch (bestDirection) {
       case "right":
         bestPosition = {
           top: buttonRect.top + "px",
-          left: buttonRect.left + "px"
+          left: buttonRect.left + "px",
         };
         break;
       case "left":
         bestPosition = {
           top: buttonRect.top + "px",
-          left: (buttonRect.left - panelWidth + buttonRect.width) + "px"
+          left: buttonRect.left - panelWidth + buttonRect.width + "px",
         };
         break;
       case "bottom":
         bestPosition = {
           top: buttonRect.top + "px",
-          left: Math.max(0, Math.min(buttonRect.left, windowWidth - panelWidth)) + "px"
+          left:
+            Math.max(0, Math.min(buttonRect.left, windowWidth - panelWidth)) +
+            "px",
         };
         break;
       case "top":
         bestPosition = {
-          top: (buttonRect.top - panelHeight + buttonRect.height) + "px",
-          left: Math.max(0, Math.min(buttonRect.left, windowWidth - panelWidth)) + "px"
+          top: buttonRect.top - panelHeight + buttonRect.height + "px",
+          left:
+            Math.max(0, Math.min(buttonRect.left, windowWidth - panelWidth)) +
+            "px",
         };
         break;
     }
@@ -437,12 +452,14 @@ function calculateOptimalPanelPosition(buttonRect) {
 
   if (panelLeft < 0) bestPosition.left = "0px";
   if (panelTop < 0) bestPosition.top = "0px";
-  if (panelLeft + panelWidth > windowWidth) bestPosition.left = (windowWidth - panelWidth) + "px";
-  if (panelTop + panelHeight > windowHeight) bestPosition.top = (windowHeight - panelHeight) + "px";
+  if (panelLeft + panelWidth > windowWidth)
+    bestPosition.left = windowWidth - panelWidth + "px";
+  if (panelTop + panelHeight > windowHeight)
+    bestPosition.top = windowHeight - panelHeight + "px";
 
   return {
     direction: bestDirection,
-    position: bestPosition
+    position: bestPosition,
   };
 }
 
@@ -489,7 +506,7 @@ function createToggleButton() {
       width: 50,
       height: 50,
       right: parseInt(restoreButtonPosition.left) + 50,
-      bottom: parseInt(restoreButtonPosition.top) + 50
+      bottom: parseInt(restoreButtonPosition.top) + 50,
     };
 
     const optimalPosition = calculateOptimalPanelPosition(buttonRect);
@@ -504,13 +521,13 @@ function createToggleButton() {
 
   function createButton(text, state, onClick) {
     let button = document.createElement("button");
-    button.className = `control-button ${state ? 'active' : 'inactive'}`;
+    button.className = `control-button ${state ? "active" : "inactive"}`;
     button.textContent = text;
 
-    button.onclick = function() {
+    button.onclick = function () {
       const newState = onClick();
       button.textContent = newState;
-      button.className = `control-button ${!state ? 'active' : 'inactive'}`;
+      button.className = `control-button ${!state ? "active" : "inactive"}`;
 
       // 添加點擊效果
       button.style.transform = "scale(0.95)";
@@ -551,7 +568,8 @@ function createToggleButton() {
       window[delayKey] = value;
 
       // 添加變更效果
-      delayInput.style.boxShadow = "0 0 0 3px rgba(76, 175, 80, 0.4), inset 0 1px 3px rgba(0, 0, 0, 0.2)";
+      delayInput.style.boxShadow =
+        "0 0 0 3px rgba(76, 175, 80, 0.4), inset 0 1px 3px rgba(0, 0, 0, 0.2)";
       setTimeout(() => {
         delayInput.style.boxShadow = "";
       }, 800);
@@ -574,10 +592,13 @@ function createToggleButton() {
       onClick: () => {
         autoAnswer = !autoAnswer;
         GM_setValue("autoAnswer", autoAnswer);
+        Promise.resolve().then(() => {
+          botoperate();
+        });
         return autoAnswer ? "停止答題" : "自動答題";
       },
       delay: answerDelay,
-      delayKey: "answerDelay"
+      delayKey: "answerDelay",
     },
     {
       text: autoNextQuestion ? "停止下一題" : "自動下一題",
@@ -585,10 +606,13 @@ function createToggleButton() {
       onClick: () => {
         autoNextQuestion = !autoNextQuestion;
         GM_setValue("autoNextQuestion", autoNextQuestion);
+        Promise.resolve().then(() => {
+          botoperate();
+        });
         return autoNextQuestion ? "停止下一題" : "自動下一題";
       },
       delay: nextQuestionDelay,
-      delayKey: "nextQuestionDelay"
+      delayKey: "nextQuestionDelay",
     },
     {
       text: autoNextExercise ? "停止下一題集" : "自動下一題集",
@@ -596,10 +620,13 @@ function createToggleButton() {
       onClick: () => {
         autoNextExercise = !autoNextExercise;
         GM_setValue("autoNextExercise", autoNextExercise);
+        Promise.resolve().then(() => {
+          botoperate();
+        });
         return autoNextExercise ? "停止下一題集" : "自動下一題集";
       },
       delay: nextExerciseDelay,
-      delayKey: "nextExerciseDelay"
+      delayKey: "nextExerciseDelay",
     },
     {
       text: autoRepeatAnswers ? "停止重複作答" : "重複作答",
@@ -607,11 +634,14 @@ function createToggleButton() {
       onClick: () => {
         autoRepeatAnswers = !autoRepeatAnswers;
         GM_setValue("autoRepeatAnswers", autoRepeatAnswers);
+        Promise.resolve().then(() => {
+          botoperate();
+        });
         return autoRepeatAnswers ? "停止重複作答" : "重複作答";
       },
       delay: repeatAnswersDelay,
-      delayKey: "repeatAnswersDelay"
-    }
+      delayKey: "repeatAnswersDelay",
+    },
   ];
 
   // 根據保存的順序添加按鈕
@@ -619,16 +649,21 @@ function createToggleButton() {
   buttonOrder.forEach((orderIndex, i) => {
     const btn = buttons[orderIndex];
     const button = createButton(btn.text, btn.state, btn.onClick);
-    const group = createButtonGroup(button, btn.delay, btn.delayKey, orderIndex);
+    const group = createButtonGroup(
+      button,
+      btn.delay,
+      btn.delayKey,
+      orderIndex
+    );
     buttonGroups.push(group);
   });
 
-  buttonGroups.forEach(group => {
+  buttonGroups.forEach((group) => {
     contentContainer.appendChild(group);
   });
 
   // 切換按鈕的點擊事件 (統一最小化和恢復功能)
-  toggleButton.onclick = function() {
+  toggleButton.onclick = function () {
     if (!isControlPanelMinimized) {
       // 最小化面板
       buttonContainer.style.opacity = "0";
@@ -680,19 +715,22 @@ function createToggleButton() {
   headerContainer.insertBefore(mainDragHandle, headerContainer.firstChild);
 
   // 為控制面板添加拖動功能
-  mainDragHandle.addEventListener('mousedown', function(e) {
-    let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+  mainDragHandle.addEventListener("mousedown", function (e) {
+    let pos1 = 0,
+      pos2 = 0,
+      pos3 = 0,
+      pos4 = 0;
     let isDragging = false;
 
     e.preventDefault();
     pos3 = e.clientX;
     pos4 = e.clientY;
 
-    document.addEventListener('mousemove', elementDrag);
-    document.addEventListener('mouseup', closeDragElement);
+    document.addEventListener("mousemove", elementDrag);
+    document.addEventListener("mouseup", closeDragElement);
 
-    mainDragHandle.style.cursor = 'grabbing';
-    buttonContainer.style.transition = 'none';
+    mainDragHandle.style.cursor = "grabbing";
+    buttonContainer.style.transition = "none";
     isDragging = true;
 
     function elementDrag(e) {
@@ -705,38 +743,43 @@ function createToggleButton() {
       pos4 = e.clientY;
 
       // 直接設置元素位置為滑鼠位置減去偏移
-      buttonContainer.style.top = (buttonContainer.offsetTop - pos2) + "px";
-      buttonContainer.style.left = (buttonContainer.offsetLeft - pos1) + "px";
+      buttonContainer.style.top = buttonContainer.offsetTop - pos2 + "px";
+      buttonContainer.style.left = buttonContainer.offsetLeft - pos1 + "px";
 
-            // 確保不超出視窗範圍
+      // 確保不超出視窗範圍
       const rect = buttonContainer.getBoundingClientRect();
       const maxX = window.innerWidth - rect.width;
       const maxY = window.innerHeight - rect.height;
 
-      if (parseInt(buttonContainer.style.left) < 0) buttonContainer.style.left = "0px";
-      if (parseInt(buttonContainer.style.top) < 0) buttonContainer.style.top = "0px";
-      if (parseInt(buttonContainer.style.left) > maxX) buttonContainer.style.left = maxX + "px";
-      if (parseInt(buttonContainer.style.top) > maxY) buttonContainer.style.top = maxY + "px";
+      if (parseInt(buttonContainer.style.left) < 0)
+        buttonContainer.style.left = "0px";
+      if (parseInt(buttonContainer.style.top) < 0)
+        buttonContainer.style.top = "0px";
+      if (parseInt(buttonContainer.style.left) > maxX)
+        buttonContainer.style.left = maxX + "px";
+      if (parseInt(buttonContainer.style.top) > maxY)
+        buttonContainer.style.top = maxY + "px";
     }
 
     function closeDragElement() {
-      document.removeEventListener('mousemove', elementDrag);
-      document.removeEventListener('mouseup', closeDragElement);
-      mainDragHandle.style.cursor = 'grab';
-      buttonContainer.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+      document.removeEventListener("mousemove", elementDrag);
+      document.removeEventListener("mouseup", closeDragElement);
+      mainDragHandle.style.cursor = "grab";
+      buttonContainer.style.transition =
+        "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
       isDragging = false;
 
       // 更新位置
       restoreButtonPosition = {
         top: buttonContainer.style.top,
-        left: buttonContainer.style.left
+        left: buttonContainer.style.left,
       };
       GM_setValue("restoreButtonPosition", restoreButtonPosition);
     }
   });
 
   // 添加窗口大小變化的監聽，自動調整控制面板位置
-  window.addEventListener('resize', function() {
+  window.addEventListener("resize", function () {
     if (!isControlPanelMinimized && buttonContainer) {
       // 獲取當前控制面板位置
       const panelRect = buttonContainer.getBoundingClientRect();
@@ -765,9 +808,9 @@ function setupDragAndDrop(element, container) {
   let initialIndex = -1;
 
   // 只有拖動手柄才能觸發拖動
-  const dragHandle = element.querySelector('.drag-handle');
+  const dragHandle = element.querySelector(".drag-handle");
 
-  dragHandle.addEventListener('mousedown', startDrag);
+  dragHandle.addEventListener("mousedown", startDrag);
 
   function startDrag(e) {
     e.preventDefault();
@@ -783,27 +826,27 @@ function setupDragAndDrop(element, container) {
     offsetY = initialY - rect.top;
 
     // 記錄初始索引
-    const groups = Array.from(container.querySelectorAll('.button-group'));
+    const groups = Array.from(container.querySelectorAll(".button-group"));
     initialIndex = groups.indexOf(draggedItem);
 
     // 創建佔位元素
-    placeholder = document.createElement('div');
+    placeholder = document.createElement("div");
     placeholder.style.width = `${rect.width}px`;
     placeholder.style.height = `${rect.height}px`;
-    placeholder.style.margin = '0';
-    placeholder.style.padding = '0';
-    placeholder.style.background = 'rgba(255, 255, 255, 0.1)';
-    placeholder.style.borderRadius = '16px';
-    placeholder.style.border = '2px dashed rgba(255, 255, 255, 0.3)';
-    placeholder.style.transition = 'all 0.2s ease';
-    placeholder.className = 'drag-placeholder';
+    placeholder.style.margin = "0";
+    placeholder.style.padding = "0";
+    placeholder.style.background = "rgba(255, 255, 255, 0.1)";
+    placeholder.style.borderRadius = "16px";
+    placeholder.style.border = "2px dashed rgba(255, 255, 255, 0.3)";
+    placeholder.style.transition = "all 0.2s ease";
+    placeholder.className = "drag-placeholder";
 
     // 添加拖動樣式
-    draggedItem.classList.add('dragging');
-    draggedItem.style.position = 'absolute';
-    draggedItem.style.zIndex = '1000';
+    draggedItem.classList.add("dragging");
+    draggedItem.style.position = "absolute";
+    draggedItem.style.zIndex = "1000";
     draggedItem.style.width = `${rect.width}px`;
-    draggedItem.style.boxShadow = '0 15px 35px rgba(0, 0, 0, 0.6)';
+    draggedItem.style.boxShadow = "0 15px 35px rgba(0, 0, 0, 0.6)";
     isDragging = true;
 
     // 插入佔位元素
@@ -813,8 +856,8 @@ function setupDragAndDrop(element, container) {
     updateDraggedPosition(e);
 
     // 添加拖動事件監聽器
-    document.addEventListener('mousemove', drag);
-    document.addEventListener('mouseup', endDrag);
+    document.addEventListener("mousemove", drag);
+    document.addEventListener("mouseup", endDrag);
   }
 
   function drag(e) {
@@ -824,7 +867,9 @@ function setupDragAndDrop(element, container) {
     updateDraggedPosition(e);
 
     // 檢查是否需要重新排序
-    const allGroups = Array.from(container.querySelectorAll('.button-group:not(.dragging)'));
+    const allGroups = Array.from(
+      container.querySelectorAll(".button-group:not(.dragging)")
+    );
     const closestGroup = findClosestElement(e.clientX, e.clientY, allGroups);
 
     if (closestGroup) {
@@ -853,32 +898,32 @@ function setupDragAndDrop(element, container) {
       container.removeChild(placeholder);
 
       // 移除拖動樣式
-      draggedItem.classList.remove('dragging');
-      draggedItem.style.position = '';
-      draggedItem.style.top = '';
-      draggedItem.style.left = '';
-      draggedItem.style.zIndex = '';
-      draggedItem.style.width = '';
-      draggedItem.style.boxShadow = '';
+      draggedItem.classList.remove("dragging");
+      draggedItem.style.position = "";
+      draggedItem.style.top = "";
+      draggedItem.style.left = "";
+      draggedItem.style.zIndex = "";
+      draggedItem.style.width = "";
+      draggedItem.style.boxShadow = "";
 
       // 添加放置動畫效果
-      draggedItem.style.transform = 'scale(1.05)';
+      draggedItem.style.transform = "scale(1.05)";
       setTimeout(() => {
-        draggedItem.style.transform = '';
+        draggedItem.style.transform = "";
       }, 200);
 
       // 保存新的按鈕順序
       saveButtonOrder();
 
       // 檢查是否有實際移動
-      const groups = Array.from(container.querySelectorAll('.button-group'));
+      const groups = Array.from(container.querySelectorAll(".button-group"));
       const finalIndex = groups.indexOf(draggedItem);
 
       if (initialIndex !== finalIndex) {
         // 播放移動音效或其他反饋
-        draggedItem.style.animation = 'pulse 0.5s ease';
+        draggedItem.style.animation = "pulse 0.5s ease";
         setTimeout(() => {
-          draggedItem.style.animation = '';
+          draggedItem.style.animation = "";
         }, 500);
       }
 
@@ -888,8 +933,8 @@ function setupDragAndDrop(element, container) {
     }
 
     // 移除事件監聽器
-    document.removeEventListener('mousemove', drag);
-    document.removeEventListener('mouseup', endDrag);
+    document.removeEventListener("mousemove", drag);
+    document.removeEventListener("mouseup", endDrag);
   }
 
   // 找到最接近的元素
@@ -897,15 +942,14 @@ function setupDragAndDrop(element, container) {
     let closest = null;
     let minDistance = Number.MAX_VALUE;
 
-    elements.forEach(element => {
+    elements.forEach((element) => {
       const rect = element.getBoundingClientRect();
       const centerX = rect.left + rect.width / 2;
       const centerY = rect.top + rect.height / 2;
 
       // 使用二維距離計算
       const distance = Math.sqrt(
-        Math.pow(x - centerX, 2) +
-        Math.pow(y - centerY, 2)
+        Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2)
       );
 
       if (distance < minDistance) {
@@ -919,11 +963,11 @@ function setupDragAndDrop(element, container) {
 
   // 保存按鈕順序
   function saveButtonOrder() {
-    const groups = Array.from(container.querySelectorAll('.button-group'));
-    const newOrder = groups.map(group => parseInt(group.dataset.index));
+    const groups = Array.from(container.querySelectorAll(".button-group"));
+    const newOrder = groups.map((group) => parseInt(group.dataset.index));
 
     // 過濾掉無效值
-    const filteredOrder = newOrder.filter(index => !isNaN(index));
+    const filteredOrder = newOrder.filter((index) => !isNaN(index));
 
     // 保存新順序
     buttonOrder = filteredOrder;
@@ -931,22 +975,7 @@ function setupDragAndDrop(element, container) {
   }
 }
 
-function popuphandle() {
-  let correctAnswerDiv = document.querySelector(".correctanswer");
-  let completedAllDiv = document.querySelector(".completed_all");
-  let retakeanswerDiv = document.querySelector(".retakeanswer");
-  let divShowStatus = {
-    correctAnswerDiv: correctAnswerDiv
-      ? window.getComputedStyle(correctAnswerDiv).display
-      : "none",
-    completedAllDiv: completedAllDiv
-      ? window.getComputedStyle(completedAllDiv).display
-      : "none",
-    retakeAnswerDiv: retakeanswerDiv
-      ? window.getComputedStyle(retakeanswerDiv).display
-      : "none",
-  };
-
+function botoperate() {
   if (
     autoAnswer &&
     divShowStatus.correctAnswerDiv === "none" &&
@@ -1007,11 +1036,29 @@ function popuphandle() {
   }
 }
 
+function exerciseWindowRefresh() {
+  correctAnswerDiv = document.querySelector(".correctanswer");
+  completedAllDiv = document.querySelector(".completed_all");
+  retakeanswerDiv = document.querySelector(".retakeanswer");
+  let divShowStatus = {
+    correctAnswerDiv: correctAnswerDiv
+      ? window.getComputedStyle(correctAnswerDiv).display
+      : "none",
+    completedAllDiv: completedAllDiv
+      ? window.getComputedStyle(completedAllDiv).display
+      : "none",
+    retakeAnswerDiv: retakeanswerDiv
+      ? window.getComputedStyle(retakeanswerDiv).display
+      : "none",
+  };
+  botoperate();
+}
+
 function setupPageObserver() {
   console.log("初始化: 設置頁面監聽器");
 
   const waitForExerciseWindow = setInterval(() => {
-    const targetNode = document.querySelector('.exercisewindow');
+    const targetNode = document.querySelector(".exercisewindow");
     if (targetNode) {
       clearInterval(waitForExerciseWindow);
       console.log("發現練習視窗，開始監聽");
@@ -1020,17 +1067,19 @@ function setupPageObserver() {
         childList: true,
         subtree: true,
         attributes: true,
-        attributeFilter: ['style', 'class']
+        attributeFilter: ["style", "class"],
       };
 
-      const callback = function(mutationsList, observer) {
-        for(const mutation of mutationsList) {
-          const hasAnswerButton = targetNode.querySelector(".w3-btn.w3-green.w3-margin-bottom");
+      const callback = function (mutationsList, observer) {
+        for (const mutation of mutationsList) {
+          const hasAnswerButton = targetNode.querySelector(
+            ".w3-btn.w3-green.w3-margin-bottom"
+          );
           const hasRetakeDiv = targetNode.querySelector(".retakeanswer");
 
           if (hasAnswerButton || hasRetakeDiv) {
             console.log("偵測到練習視窗更新: 執行自動操作");
-            popuphandle();
+            exerciseWindowRefresh();
           }
         }
       };
@@ -1041,12 +1090,12 @@ function setupPageObserver() {
   }, 100);
 }
 
-(async function() {
+(async function () {
   "use strict";
 
-  window.onload = function() {
+  window.onload = function () {
     createToggleButton();
     setupPageObserver();
-    popuphandle();
+    exerciseWindowRefresh();
   };
 })();
