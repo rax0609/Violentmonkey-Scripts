@@ -29,6 +29,7 @@ let repeatAnswersDelay = GM_getValue("repeatAnswersDelay", 500);
 let correctAnswerDiv;
 let completedAllDiv;
 let retakeanswerDiv;
+let divShowStatus;
 // 全局變量，用於存儲控制面板和恢復按鈕的引用
 let buttonContainer, toggleButton;
 
@@ -1040,7 +1041,7 @@ function exerciseWindowRefresh() {
   correctAnswerDiv = document.querySelector(".correctanswer");
   completedAllDiv = document.querySelector(".completed_all");
   retakeanswerDiv = document.querySelector(".retakeanswer");
-  let divShowStatus = {
+  divShowStatus = {
     correctAnswerDiv: correctAnswerDiv
       ? window.getComputedStyle(correctAnswerDiv).display
       : "none",
