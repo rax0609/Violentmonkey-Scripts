@@ -4,23 +4,26 @@ window.w3AutoHelper.ConfigManager = (function() {
 
     // 配置物件
     const config = {
-        buttonTexts: {
-            autoAnswer: {
-                start: "自動答題",
-                stop: "停止答題",
-            },
-            autoNextQuestion: {
-                start: "自動下一題",
-                stop: "停止下一題",
-            },
-            autoNextExercise: {
-                start: "自動下一題組",
-                stop: "停止下一題組",
-            },
-            autoRepeatAnswers: {
-                start: "重複作答",
-                stop: "停止重複作答",
-            },
+        // 按鈕文字定義
+        ui: {
+            buttonTexts: {
+                autoAnswer: {
+                    start: "自動答題",
+                    stop: "停止答題",
+                },
+                autoNextQuestion: {
+                    start: "自動下一題",
+                    stop: "停止下一題",
+                },
+                autoNextExercise: {
+                    start: "自動下一題組",
+                    stop: "停止下一題組",
+                },
+                autoRepeatAnswers: {
+                    start: "重複作答",
+                    stop: "停止重複作答",
+                }
+            }
         },
         settings: {
             autoFunctionsSettings: {
@@ -105,27 +108,32 @@ window.w3AutoHelper.ConfigManager = (function() {
 
         // 初始化設定
         init() {
-            // 驗證所有設定值是否存在，若不存在則設定預設值
-            Object.entries(config.settings.autoFunctionsSettings).forEach(([key]) => {
-                if (GM_getValue(key) === undefined) {
-                    this.saveSettings(key, false);
-                }
-            });
-
-            Object.entries(config.settings.delay).forEach(([key, defaultValue]) => {
-                if (GM_getValue(key) === undefined) {
-                    this.saveSettings(key, defaultValue);
-                }
-            });
-
-            if (GM_getValue("buttonOrder") === undefined) {
-                this.saveSettings("buttonOrder", [0, 1, 2, 3]);
-            }
+            
         },
 
         // 取得按鈕文字
         getButtonText(key, isActive) {
-            return config.buttonTexts[key][isActive ? 'stop' : 'start'];
+            const texts = config.ui.buttonTexts[key];
+            if (!texts) {
+                console.warn(`找不到按鈕文字配置: ${key}`);
+                return isActive ? '停止' : '開始';
+            }
+            return texts[isActive ? 'stop' : 'start'];
+        },
+
+        // 取得所有按鈕文字設定
+        getAllButtonTexts() {
+            return JSON.parse(JSON.stringify(config.ui.buttonTexts));
+        },
+
+        // 取得特定按鈕的所有文字
+        getButtonTexts(key) {
+            const texts = config.ui.buttonTexts[key];
+            if (!texts) {
+                console.warn(`找不到按鈕文字配置: ${key}`);
+                return { start: '開始', stop: '停止' };
+            }
+            return { ...texts };
         },
 
         // 取得所有設定
