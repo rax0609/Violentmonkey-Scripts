@@ -90,12 +90,12 @@ function createGlobalStyles() {
       from { 
         transform: scale(0.1); 
         opacity: 0;
-        border-radius: 25px;
+        border-radius: 50%; /* 從圓形開始 */
       }
       to { 
         transform: scale(1); 
         opacity: 1;
-        border-radius: 18px;
+        border-radius: 18px; /* 變回方形面板 */
       }
     }
 
@@ -107,9 +107,9 @@ function createGlobalStyles() {
         border-radius: 18px;
       }
       to { 
-        transform: scale(0.1); 
+        transform: scale(0.1);  /* 更小的縮放讓動畫更明顯 */
         opacity: 0;
-        border-radius: 25px;
+        border-radius: 50%; /* 變成圓形 */
       }
     }
 
@@ -556,6 +556,7 @@ function createToggleButton() {
   toggleButton.className = "toggle-button";
   toggleButton.style.top = restoreButtonPosition.top;
   toggleButton.style.left = restoreButtonPosition.left;
+  toggleButton.style.display = isControlPanelMinimized ? "flex" : "none";
   document.body.appendChild(toggleButton);
 
   // 添加拖動功能到切換按鈕
@@ -1036,26 +1037,48 @@ function setupOutsideClickListener() {
 // 新增: 封裝最小化面板的功能
 function minimizePanel() {
   if (!isControlPanelMinimized) {
-    const buttonRect = toggleButton.getBoundingClientRect();
+    console.log("執行面板最小化");
     
-    // 設定動畫起點為按鈕位置
-    buttonContainer.style.setProperty('--origin-x', 
-      buttonRect.left + buttonRect.width/2 - parseInt(buttonContainer.style.left) + 'px');
-    buttonContainer.style.setProperty('--origin-y', 
-      buttonRect.top + buttonRect.height/2 - parseInt(buttonContainer.style.top) + 'px');
+    // 獲取面板和按鈕的位置信息
+    const panelRect = buttonContainer.getBoundingClientRect();
+    
+    // 計算要設置的縮回原點（面板左上角）
+    buttonContainer.style.setProperty('--origin-x', '0px');
+    buttonContainer.style.setProperty('--origin-y', '0px');
+    
+    // 先保存按鈕應該回到的位置
+    const targetTop = panelRect.top + "px";
+    const targetLeft = panelRect.left + "px";
     
     // 添加收合動畫
     buttonContainer.classList.remove('panel-expanding');
     buttonContainer.classList.add('panel-collapsing');
     
-    // 動畫結束後隱藏面板，顯示切換按鈕
+    // 動畫結束後隱藏面板，顯示切換按鈕，並將按鈕放置到面板左上角
     setTimeout(() => {
-      buttonContainer.style.display = "none";
-      // 修改: 強制顯示浮動按鈕，使用更高優先級
-      toggleButton.style.setProperty('display', 'flex', 'important');
-      toggleButton.textContent = "+";
+      // 先變更狀態，再處理UI變化
       isControlPanelMinimized = true;
       GM_setValue("isMinimized", true);
+      
+      // 設置面板為隱藏
+      buttonContainer.style.display = "none";
+      
+      // 設置按鈕位置為面板左上角
+      toggleButton.style.top = targetTop;
+      toggleButton.style.left = targetLeft;
+      
+      // 將位置保存到 GM_setValue
+      restoreButtonPosition = {
+        top: targetTop,
+        left: targetLeft
+      };
+      GM_setValue("restoreButtonPosition", restoreButtonPosition);
+      
+      // 強制顯示浮動按鈕 - 特別確保它一定顯示
+      toggleButton.textContent = "+";
+      toggleButton.style.setProperty('display', 'flex', 'important');
+      
+      console.log("面板已最小化，按鈕位置：", targetTop, targetLeft);
     }, 300);
   }
 }
@@ -1099,6 +1122,8 @@ function setupPageObserver() {
 // 修改: 封裝展開面板的功能
 function expandPanel() {
   if (isControlPanelMinimized) {
+    console.log("執行面板展開");
+    
     // 獲取切換按鈕的實際位置和尺寸
     const buttonRect = toggleButton.getBoundingClientRect();
 
@@ -1109,33 +1134,82 @@ function expandPanel() {
     buttonContainer.style.top = optimalPosition.position.top;
     buttonContainer.style.left = optimalPosition.position.left;
     
-    // 設定動畫起點為按鈕位置
-    buttonContainer.style.setProperty('--origin-x', 
-      buttonRect.left + buttonRect.width/2 - parseInt(buttonContainer.style.left) + 'px');
-    buttonContainer.style.setProperty('--origin-y', 
-      buttonRect.top + buttonRect.height/2 - parseInt(buttonContainer.style.top) + 'px');
+    // 設定動畫起點為按鈕中心相對於面板的位置
+    // 由於我們希望從面板左上角展開，設置為(0,0)
+    buttonContainer.style.setProperty('--origin-x', '0px');
+    buttonContainer.style.setProperty('--origin-y', '0px');
     
-    // 顯示控制面板，隱藏切換按鈕
-    buttonContainer.style.display = "flex";
+    // 先變更狀態
+    isControlPanelMinimized = false;
+    GM_setValue("isMinimized", false);
     
-    // 修改: 強制隱藏浮動按鈕，使用更高優先級
+    // 保存新的面板位置到全局變數和 GM_setValue，確保下次加載時能記住位置
+    restoreButtonPosition = {
+      top: optimalPosition.position.top,
+      left: optimalPosition.position.left
+    };
+    GM_setValue("restoreButtonPosition", restoreButtonPosition);
+    
+    // 強制隱藏浮動按鈕
     toggleButton.style.setProperty('display', 'none', 'important');
+    toggleButton.textContent = "−";
+    
+    // 顯示控制面板
+    buttonContainer.style.display = "flex";
     
     buttonContainer.classList.remove('panel-collapsing');
     buttonContainer.classList.add('panel-expanding');
-
-    isControlPanelMinimized = false;
-    GM_setValue("isMinimized", false);
+    
+    console.log("面板已展開，位置：", optimalPosition.position.top, optimalPosition.position.left);
   }
 }
 
 (async function () {
   "use strict";
 
-  window.onload = function () {
+  // 將初始化邏輯移至立即執行函數，確保在頁面完全載入前就初始化控制項
+  // 監聽 DOMContentLoaded 事件來確保DOM已準備好
+  document.addEventListener("DOMContentLoaded", function() {
+    console.log("DOM已載入，初始化控制面板");
+    
+    // 初始化面板及按鈕
     createToggleButton();
+    
+    // 強制確保按鈕顯示狀態與面板狀態一致
+    if (isControlPanelMinimized) {
+      toggleButton.style.setProperty('display', 'flex', 'important');
+      buttonContainer.style.display = "none";
+    } else {
+      toggleButton.style.display = "none";
+      buttonContainer.style.display = "flex";
+    }
+    
+    // 設定頁面觀察者
+    setupPageObserver();
+    
+    // 設定點擊外部收合面板
+    setupOutsideClickListener();
+    
+    // 初始刷新練習視窗
+    setTimeout(exerciseWindowRefresh, 300);
+  });
+
+  // 確保即使 DOMContentLoaded 已觸發也能執行初始化
+  if (document.readyState === "interactive" || document.readyState === "complete") {
+    console.log("頁面已完成載入，立即初始化控制面板");
+    createToggleButton();
+    
+    // 強制確保按鈕顯示狀態與面板狀態一致
+    if (isControlPanelMinimized) {
+      toggleButton.style.setProperty('display', 'flex', 'important');
+      buttonContainer.style.display = "none"; 
+    } else {
+      toggleButton.style.display = "none";
+      buttonContainer.style.display = "flex";
+    }
+    
     setupPageObserver();
     setupOutsideClickListener();
-    exerciseWindowRefresh();
-  };
+    setTimeout(exerciseWindowRefresh, 300);
+  }
 })();
