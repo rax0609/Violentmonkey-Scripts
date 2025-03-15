@@ -1,4 +1,5 @@
 window.w3AutoHelper.ConfigManager = (function() {
+    const logger = window.w3AutoHelper.logger;
     // 私有變數
     const subscribers = new Set();
 
@@ -51,6 +52,7 @@ window.w3AutoHelper.ConfigManager = (function() {
 
     // 通知訂閱者
     function notifySubscribers(key, value) {
+        logger.debug(`設定已變更: ${key} = ${value}`);
         subscribers.forEach(callback => callback(key, value));
     }
 
@@ -68,6 +70,7 @@ window.w3AutoHelper.ConfigManager = (function() {
 
         // 儲存設定值
         saveSettings(key, value) {
+            logger.debug(`儲存設定: ${key} = ${value}`);
             GM_setValue(key, value);
             const sections = ['autoFunctionsSettings', 'delay', 'uiSettings'];
             for (const section of sections) {
@@ -87,6 +90,7 @@ window.w3AutoHelper.ConfigManager = (function() {
 
         // 重設所有設定為預設值
         resetToDefaults() {
+            logger.info("重設所有設定為預設值");
             const defaults = {
                 autoAnswer: false,
                 autoNextQuestion: false,
@@ -115,7 +119,7 @@ window.w3AutoHelper.ConfigManager = (function() {
         getButtonText(key, isActive) {
             const texts = config.ui.buttonTexts[key];
             if (!texts) {
-                console.warn(`找不到按鈕文字配置: ${key}`);
+                logger.warn(`找不到按鈕文字配置: ${key}`);
                 return isActive ? '停止' : '開始';
             }
             return texts[isActive ? 'stop' : 'start'];
@@ -130,7 +134,7 @@ window.w3AutoHelper.ConfigManager = (function() {
         getButtonTexts(key) {
             const texts = config.ui.buttonTexts[key];
             if (!texts) {
-                console.warn(`找不到按鈕文字配置: ${key}`);
+                logger.warn(`找不到按鈕文字配置: ${key}`);
                 return { start: '開始', stop: '停止' };
             }
             return { ...texts };
