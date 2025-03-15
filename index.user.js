@@ -1131,6 +1131,7 @@ function expandPanel() {
   window.onload = function () {
     createToggleButton();
     setupPageObserver();
+    setupOutsideClickListener();
     exerciseWindowRefresh();
   };
 })();
