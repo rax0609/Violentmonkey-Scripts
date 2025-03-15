@@ -1051,7 +1051,8 @@ function minimizePanel() {
     // 動畫結束後隱藏面板，顯示切換按鈕
     setTimeout(() => {
       buttonContainer.style.display = "none";
-      toggleButton.style.display = "flex"; // 確保按鈕可見
+      // 修改: 強制顯示浮動按鈕，使用更高優先級
+      toggleButton.style.setProperty('display', 'flex', 'important');
       toggleButton.textContent = "+";
       isControlPanelMinimized = true;
       GM_setValue("isMinimized", true);
@@ -1116,7 +1117,10 @@ function expandPanel() {
     
     // 顯示控制面板，隱藏切換按鈕
     buttonContainer.style.display = "flex";
-    toggleButton.style.display = "none"; // 隱藏浮動按鈕
+    
+    // 修改: 強制隱藏浮動按鈕，使用更高優先級
+    toggleButton.style.setProperty('display', 'none', 'important');
+    
     buttonContainer.classList.remove('panel-collapsing');
     buttonContainer.classList.add('panel-expanding');
 
