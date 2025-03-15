@@ -1,5 +1,6 @@
 window.w3AutoHelper.core = (function () {
   const ConfigManager = window.w3AutoHelper.ConfigManager;
+  const logger = window.w3AutoHelper.logger;
   let correctAnswerDiv;
   let completedAllDiv;
   let retakeanswerDiv;
@@ -23,8 +24,10 @@ window.w3AutoHelper.core = (function () {
       divShowStatus.completedAllDiv === "none" &&
       divShowStatus.retakeAnswerDiv === "none"
     ) {
+      logger.debug("準備提交答案");
       setTimeout(() => {
         answer_is_correct();
+        logger.debug("已提交答案");
       }, answerDelay);
     }
 
@@ -34,13 +37,18 @@ window.w3AutoHelper.core = (function () {
       divShowStatus.completedAllDiv !== "block" &&
       divShowStatus.retakeAnswerDiv !== "block"
     ) {
+      logger.info("準備進入下一題");
       setTimeout(() => {
         if (qnumber + 1 !== totalqnumbers) {
           let nextButton = correctAnswerDiv.querySelector(
             'button[onclick="goto_next_question()"]'
           );
           if (nextButton) {
+            logger.debug("點擊下一題按鈕");
             nextButton.click();
+          } else {
+            logger.warn("找不到下一題按鈕，嘗試直接調用函數");
+            goto_next_question();
           }
         }
       }, nextQuestionDelay);
@@ -51,23 +59,32 @@ window.w3AutoHelper.core = (function () {
       divShowStatus.completedAllDiv === "block" &&
       divShowStatus.retakeAnswerDiv !== "block"
     ) {
+      logger.info("準備進入下一題組");
       setTimeout(() => {
         if (qnumber + 1 === totalqnumbers) {
           let nextButton = document.querySelector("#next_exercise_btn");
           if (nextButton) {
+            logger.debug("點擊下一題組按鈕");
             nextButton.click();
+          } else {
+            logger.warn("找不到下一題組按鈕，請手動操作");
           }
         }
       }, nextExerciseDelay);
     }
 
     if (autoRepeatAnswers && divShowStatus.retakeAnswerDiv === "block") {
+      logger.info("準備重新作答");
       setTimeout(() => {
         let retakeButton = retakeanswerDiv.querySelector(
           '.ws-btn[onclick="retake_exercise()"]'
         );
         if (retakeButton) {
+          logger.debug("點擊重新作答按鈕");
           retakeButton.click();
+        } else {
+          logger.warn("找不到重新作答按鈕，嘗試直接調用函數");
+          retake_exercise();
         }
       }, repeatAnswersDelay);
     }
@@ -77,6 +94,7 @@ window.w3AutoHelper.core = (function () {
     // 訂閱設定變更
     ConfigManager.subscribe((key, value) => {
       if (key.startsWith("auto") || key.endsWith("Delay")) {
+        logger.debug("設定已變更，以新設定執行");
         manageAutoAnswers();
       }
     });
@@ -97,6 +115,16 @@ window.w3AutoHelper.core = (function () {
         ? window.getComputedStyle(retakeanswerDiv).display
         : "none",
     };
+    logger.debug("開始檢測窗口類別");
+    if (divShowStatus.correctAnswerDiv === "block") {
+      logger.debug("檢測到題目完成");
+    }
+    if(divShowStatus.completedAllDiv ==="block"){
+      logger.debug("檢測到題組完成");
+    }
+    if(divShowStatus.retakeAnswerDiv ==="block"){
+      logger.debug("檢測到重複答題");
+    }
     manageAutoAnswers();
   }
 
@@ -104,6 +132,7 @@ window.w3AutoHelper.core = (function () {
     const waitForExerciseWindow = setInterval(() => {
       const targetNode = document.querySelector(".exercisewindow");
       if (targetNode) {
+        logger.debug("已檢測到測驗區域");
         clearInterval(waitForExerciseWindow);
 
         const config = {
@@ -121,6 +150,7 @@ window.w3AutoHelper.core = (function () {
             const hasRetakeDiv = targetNode.querySelector(".retakeanswer");
 
             if (hasAnswerButton || hasRetakeDiv) {
+              logger.debug("檢測到測驗區域變更");
               exerciseWindowRefresh();
             }
           }
@@ -128,6 +158,8 @@ window.w3AutoHelper.core = (function () {
 
         const observer = new MutationObserver(callback);
         observer.observe(targetNode, config);
+      }else{
+        logger.debug("等待 exercisewindow 出現");
       }
     }, 100);
   }
