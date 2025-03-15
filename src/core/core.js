@@ -1,26 +1,35 @@
 window.w3AutoHelper.core = (function () {
-  const config = window.w3AutoHelper.config;
+  const ConfigManager = window.w3AutoHelper.ConfigManager;
   let correctAnswerDiv;
   let completedAllDiv;
   let retakeanswerDiv;
   let divShowStatus;
 
-  function botoperate() {
-    const { autoFunctionsSettings, delay } = config.settings;
+  function manageAutoAnswers() {
+    // 使用 ConfigManager 取得設定
+    const autoAnswer = ConfigManager.getSetting("autoAnswer");
+    const autoNextQuestion = ConfigManager.getSetting("autoNextQuestion");
+    const autoNextExercise = ConfigManager.getSetting("autoNextExercise");
+    const autoRepeatAnswers = ConfigManager.getSetting("autoRepeatAnswers");
+
+    const answerDelay = ConfigManager.getSetting("answerDelay");
+    const nextQuestionDelay = ConfigManager.getSetting("nextQuestionDelay");
+    const nextExerciseDelay = ConfigManager.getSetting("nextExerciseDelay");
+    const repeatAnswersDelay = ConfigManager.getSetting("repeatAnswersDelay");
 
     if (
-      autoFunctionsSettings.autoAnswer &&
+      autoAnswer &&
       divShowStatus.correctAnswerDiv === "none" &&
       divShowStatus.completedAllDiv === "none" &&
       divShowStatus.retakeAnswerDiv === "none"
     ) {
       setTimeout(() => {
         answer_is_correct();
-      }, delay.answerDelay);
+      }, answerDelay);
     }
 
     if (
-      autoFunctionsSettings.autoNextQuestion &&
+      autoNextQuestion &&
       divShowStatus.correctAnswerDiv === "block" &&
       divShowStatus.completedAllDiv !== "block" &&
       divShowStatus.retakeAnswerDiv !== "block"
@@ -34,11 +43,11 @@ window.w3AutoHelper.core = (function () {
             nextButton.click();
           }
         }
-      }, delay.nextQuestionDelay);
+      }, nextQuestionDelay);
     }
 
     if (
-      autoFunctionsSettings.autoNextExercise &&
+      autoNextExercise &&
       divShowStatus.completedAllDiv === "block" &&
       divShowStatus.retakeAnswerDiv !== "block"
     ) {
@@ -49,10 +58,10 @@ window.w3AutoHelper.core = (function () {
             nextButton.click();
           }
         }
-      }, delay.nextExerciseDelay);
+      }, nextExerciseDelay);
     }
 
-    if (autoFunctionsSettings.autoRepeatAnswers && divShowStatus.retakeAnswerDiv === "block") {
+    if (autoRepeatAnswers && divShowStatus.retakeAnswerDiv === "block") {
       setTimeout(() => {
         let retakeButton = retakeanswerDiv.querySelector(
           '.ws-btn[onclick="retake_exercise()"]'
@@ -60,8 +69,17 @@ window.w3AutoHelper.core = (function () {
         if (retakeButton) {
           retakeButton.click();
         }
-      }, delay.repeatAnswersDelay);
+      }, repeatAnswersDelay);
     }
+  }
+
+  function initialize() {
+    // 訂閱設定變更
+    ConfigManager.subscribe((key, value) => {
+      if (key.startsWith("auto") || key.endsWith("Delay")) {
+        manageAutoAnswers();
+      }
+    });
   }
 
   function exerciseWindowRefresh() {
@@ -79,44 +97,45 @@ window.w3AutoHelper.core = (function () {
         ? window.getComputedStyle(retakeanswerDiv).display
         : "none",
     };
-    botoperate();
+    manageAutoAnswers();
   }
 
-  function setupPageObserver() {  
+  function setupPageObserver() {
     const waitForExerciseWindow = setInterval(() => {
       const targetNode = document.querySelector(".exercisewindow");
       if (targetNode) {
         clearInterval(waitForExerciseWindow);
-  
+
         const config = {
           childList: true,
           subtree: true,
           attributes: true,
           attributeFilter: ["style", "class"],
         };
-  
+
         const callback = function (mutationsList, observer) {
           for (const mutation of mutationsList) {
             const hasAnswerButton = targetNode.querySelector(
               ".w3-btn.w3-green.w3-margin-bottom"
             );
             const hasRetakeDiv = targetNode.querySelector(".retakeanswer");
-  
+
             if (hasAnswerButton || hasRetakeDiv) {
               exerciseWindowRefresh();
             }
           }
         };
-  
+
         const observer = new MutationObserver(callback);
         observer.observe(targetNode, config);
       }
     }, 100);
   }
-  
+
   return {
-    botoperate,
+    initialize,
+    manageAutoAnswers,
     exerciseWindowRefresh,
-    setupPageObserver
+    setupPageObserver,
   };
 })();
