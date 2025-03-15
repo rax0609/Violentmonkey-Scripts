@@ -337,32 +337,38 @@ function createGlobalStyles() {
 
 // 改進的拖動功能，讓元素實時跟隨滑鼠位置
 function makeElementDraggable(element) {
-  let pos1 = 0,
-    pos2 = 0,
-    pos3 = 0,
-    pos4 = 0;
+  let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
   let isDragging = false;
   let isToggleButton = element === toggleButton; // 判斷是否為圓形按鈕
+  let startRect = null;
+  let transformOrigin = { x: 0, y: 0 };
 
   element.addEventListener("mousedown", dragMouseDown);
 
   function dragMouseDown(e) {
     e.preventDefault();
+    e.stopPropagation();
+    
+    // 記錄元素原始位置和大小
+    startRect = element.getBoundingClientRect();
+    
     // 獲取鼠標初始位置
     pos3 = e.clientX;
     pos4 = e.clientY;
-
-    // 取得元素的中心點位置（對圓形按鈕來說很重要）
-    const rect = element.getBoundingClientRect();
+    
+    // 計算鼠標與元素邊緣的偏移
+    transformOrigin.x = pos3 - startRect.left;
+    transformOrigin.y = pos4 - startRect.top;
     
     // 添加鼠標移動和鬆開事件
-    document.addEventListener("mousemove", elementDrag);
+    document.addEventListener("mousemove", elementDrag, { passive: false });
     document.addEventListener("mouseup", closeDragElement);
 
     // 添加拖動時的視覺效果
     element.style.cursor = "grabbing";
-    element.style.opacity = "0.9";
-    element.style.transition = "none";
+    element.style.opacity = "0.95";
+    element.style.transition = "none"; 
+    element.style.willChange = "transform, left, top"; // 優化渲染性能
     isDragging = true;
   }
 
@@ -370,61 +376,93 @@ function makeElementDraggable(element) {
     if (!isDragging) return;
 
     e.preventDefault();
-    // 計算新位置
+    e.stopPropagation();
+    
+    // 計算位置差異
     pos1 = pos3 - e.clientX;
     pos2 = pos4 - e.clientY;
     pos3 = e.clientX;
     pos4 = e.clientY;
-
-    // 圓形按鈕的拖動優化 - 直接使用滑鼠位置計算，並使中心點跟隨滑鼠
+    
+    // 獲取當前樣式值
+    let currentTop = element.offsetTop;
+    let currentLeft = element.offsetLeft;
+    
+    // 計算新位置 
+    let newTop = currentTop - pos2;
+    let newLeft = currentLeft - pos1;
+    
+    // 針對圓形按鈕的特殊處理
     if (isToggleButton) {
-      const buttonRadius = element.offsetWidth / 2;
-      element.style.top = (e.clientY - buttonRadius) + "px";
-      element.style.left = (e.clientX - buttonRadius) + "px";
+      // 使用transform而不是直接修改top/left，提高性能
+      const moveX = e.clientX - (startRect.left + transformOrigin.x);
+      const moveY = e.clientY - (startRect.top + transformOrigin.y);
+      
+      // 通過transform移動按鈕，提供最佳性能
+      element.style.transform = `translate(${moveX}px, ${moveY}px)`;
+      
+      // 存儲最終位置計算 (在拖曳結束時應用)
+      newTop = currentTop + moveY;
+      newLeft = currentLeft + moveX;
     } else {
-      // 面板的拖動保持原來的方式
-      element.style.top = (element.offsetTop - pos2) + "px";
-      element.style.left = (element.offsetLeft - pos1) + "px";
+      // 面板使用標準方式移動
+      element.style.top = newTop + "px";
+      element.style.left = newLeft + "px";
     }
 
-    // 確保按鈕不會超出視窗範圍
+    // 計算視窗邊界
     const rect = element.getBoundingClientRect();
     const maxX = window.innerWidth - rect.width;
     const maxY = window.innerHeight - rect.height;
 
-    if (parseInt(element.style.left) < 0) element.style.left = "0px";
-    if (parseInt(element.style.top) < 0) element.style.top = "0px";
-    if (parseInt(element.style.left) > maxX) element.style.left = maxX + "px";
-    if (parseInt(element.style.top) > maxY) element.style.top = maxY + "px";
-
-    // 保存位置到全局變量和 GM_setValue
-    if (isToggleButton && isControlPanelMinimized) {
-      restoreButtonPosition = {
-        top: element.style.top,
-        left: element.style.left,
-      };
-      GM_setValue("restoreButtonPosition", restoreButtonPosition);
-    }
+    // 存儲臨時位置信息
+    element._tempPosition = {
+      top: Math.max(0, Math.min(newTop, maxY)),
+      left: Math.max(0, Math.min(newLeft, maxX)),
+    };
   }
 
   function closeDragElement() {
+    if (!isDragging) return;
+    
     // 移除事件監聽器
     document.removeEventListener("mousemove", elementDrag);
     document.removeEventListener("mouseup", closeDragElement);
-
+    
+    // 應用最終位置 (特別是對圓形按鈕來說)
+    if (isToggleButton && element._tempPosition) {
+      // 重置transform，並套用計算好的最終位置
+      element.style.transform = "";
+      element.style.top = element._tempPosition.top + "px";
+      element.style.left = element._tempPosition.left + "px";
+      
+      // 保存按鈕位置
+      if (isControlPanelMinimized) {
+        restoreButtonPosition = {
+          top: element.style.top,
+          left: element.style.left,
+        };
+        GM_setValue("restoreButtonPosition", restoreButtonPosition);
+      }
+    }
+    
     // 恢復正常視覺效果
     element.style.cursor = isToggleButton ? "pointer" : "move";
     element.style.opacity = "1";
     element.style.transition = "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
+    element.style.willChange = "auto";
     isDragging = false;
     
     // 在拖曳結束時添加一點動畫效果增強用戶體驗
     if (isToggleButton) {
-      element.style.transform = "scale(1.15)";
+      element.style.transform = "scale(1.1)";
       setTimeout(() => {
         element.style.transform = "";
       }, 150);
     }
+    
+    element._tempPosition = null;
+    startRect = null;
   }
 }
 
