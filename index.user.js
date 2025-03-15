@@ -342,6 +342,7 @@ function makeElementDraggable(element) {
     pos3 = 0,
     pos4 = 0;
   let isDragging = false;
+  let isToggleButton = element === toggleButton; // 判斷是否為圓形按鈕
 
   element.addEventListener("mousedown", dragMouseDown);
 
@@ -351,6 +352,9 @@ function makeElementDraggable(element) {
     pos3 = e.clientX;
     pos4 = e.clientY;
 
+    // 取得元素的中心點位置（對圓形按鈕來說很重要）
+    const rect = element.getBoundingClientRect();
+    
     // 添加鼠標移動和鬆開事件
     document.addEventListener("mousemove", elementDrag);
     document.addEventListener("mouseup", closeDragElement);
@@ -372,9 +376,16 @@ function makeElementDraggable(element) {
     pos3 = e.clientX;
     pos4 = e.clientY;
 
-    // 直接設置元素位置為滑鼠位置減去偏移
-    element.style.top = e.clientY - 25 + "px"; // 25是偏移量，可以調整
-    element.style.left = e.clientX - 25 + "px"; // 25是偏移量，可以調整
+    // 圓形按鈕的拖動優化 - 直接使用滑鼠位置計算，並使中心點跟隨滑鼠
+    if (isToggleButton) {
+      const buttonRadius = element.offsetWidth / 2;
+      element.style.top = (e.clientY - buttonRadius) + "px";
+      element.style.left = (e.clientX - buttonRadius) + "px";
+    } else {
+      // 面板的拖動保持原來的方式
+      element.style.top = (element.offsetTop - pos2) + "px";
+      element.style.left = (element.offsetLeft - pos1) + "px";
+    }
 
     // 確保按鈕不會超出視窗範圍
     const rect = element.getBoundingClientRect();
@@ -387,11 +398,13 @@ function makeElementDraggable(element) {
     if (parseInt(element.style.top) > maxY) element.style.top = maxY + "px";
 
     // 保存位置到全局變量和 GM_setValue
-    restoreButtonPosition = {
-      top: element.style.top,
-      left: element.style.left,
-    };
-    GM_setValue("restoreButtonPosition", restoreButtonPosition);
+    if (isToggleButton && isControlPanelMinimized) {
+      restoreButtonPosition = {
+        top: element.style.top,
+        left: element.style.left,
+      };
+      GM_setValue("restoreButtonPosition", restoreButtonPosition);
+    }
   }
 
   function closeDragElement() {
@@ -400,10 +413,18 @@ function makeElementDraggable(element) {
     document.removeEventListener("mouseup", closeDragElement);
 
     // 恢復正常視覺效果
-    element.style.cursor = "pointer";
+    element.style.cursor = isToggleButton ? "pointer" : "move";
     element.style.opacity = "1";
     element.style.transition = "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)";
     isDragging = false;
+    
+    // 在拖曳結束時添加一點動畫效果增強用戶體驗
+    if (isToggleButton) {
+      element.style.transform = "scale(1.15)";
+      setTimeout(() => {
+        element.style.transform = "";
+      }, 150);
+    }
   }
 }
 
