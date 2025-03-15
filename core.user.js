@@ -5,11 +5,11 @@
 // @grant       GM_setValue
 // @grant       GM_getValue
 // @grant       GM_getResourceText
-// @resource    STYLES https://raw.githubusercontent.com/rax0609/Violentmonkey-Scripts/main/styles.user.js
+// @resource    STYLES https://raw.githubusercontent.com/rax0609/Violentmonkey-Scripts/segmentation-test/styles.user.js
 // @version     1.0
 // @author      叮咚陳
 // @description 2025/3/16 自動化W3Schools練習功能
-// @require     https://raw.githubusercontent.com/rax0609/Violentmonkey-Scripts/main/styles.user.js
+// @require     https://raw.githubusercontent.com/rax0609/Violentmonkey-Scripts/segmentation-test/styles.user.js
 // ==/UserScript==
 
 // 從 Violentmonkey 存儲中取得狀態
