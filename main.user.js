@@ -43,8 +43,8 @@
       logger.debug('日誌系統已設定為 DEBUG 等級');
       
       // 初始化模組
-      logger.info('初始化設定管理器...');
-      window.w3AutoHelper.ConfigManager.init();
+      // logger.info('初始化設定管理器...');
+      // window.w3AutoHelper.ConfigManager.init();
       
       logger.info('初始化使用者介面...');
       window.w3AutoHelper.panel.initialize();

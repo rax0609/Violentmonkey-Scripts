@@ -110,11 +110,6 @@ window.w3AutoHelper.ConfigManager = (function() {
             });
         },
 
-        // 初始化設定
-        init() {
-            
-        },
-
         // 取得按鈕文字
         getButtonText(key, isActive) {
             const texts = config.ui.buttonTexts[key];
