@@ -6,24 +6,28 @@
   window.w3AutoHelper.panel = (function () {
     const logger = window.w3AutoHelper.logger;
     const ConfigManager = window.w3AutoHelper.ConfigManager;
-    const bts = window.w3AutoHelper.buttons;
+    const buttons = window.w3AutoHelper.buttons;
+    const dragdrop = window.w3AutoHelper.dragdrop;
     let buttonContainer, toggleButton;
 
     function createToggleButton() {
-      createGlobalStyles();
+      window.w3AutoHelper.styles.injectStyles();
 
       // 建立控制按鈕容器
       buttonContainer = document.createElement("div");
       buttonContainer.className = "control-container";
       buttonContainer.style.position = "fixed";
       buttonContainer.style.zIndex = "9999";
-      buttonContainer.style.display = isControlPanelMinimized ? "none" : "flex";
+      
+      // 使用 ConfigManager 取得初始狀態
+      const isMinimized = ConfigManager.getSetting('isMinimized');
+      buttonContainer.style.display = isMinimized ? "none" : "flex";
       buttonContainer.style.flexDirection = "column";
       buttonContainer.style.gap = "15px";
-      buttonContainer.style.cursor = "move"; // 新增：將整個面板設為可拖曳游標
+      buttonContainer.style.cursor = "move";
       document.body.appendChild(buttonContainer);
 
-      // 建立標題和最小化按鈕的容器
+      // 建立標題和面板容器 
       const headerContainer = document.createElement("div");
       headerContainer.className = "header-container";
       buttonContainer.appendChild(headerContainer);
@@ -34,27 +38,30 @@
       panelTitle.textContent = "自動化控制面板";
       headerContainer.appendChild(panelTitle);
 
-      // 建立統一的切換按鈕 (同時作為最小化和恢復功能)
+      // 建立切換按鈕
       toggleButton = document.createElement("button");
-      toggleButton.textContent = isControlPanelMinimized ? "+" : "−";
+      toggleButton.textContent = isMinimized ? "+" : "−";
       toggleButton.className = "toggle-button";
-      toggleButton.style.top = restoreButtonPosition.top;
-      toggleButton.style.left = restoreButtonPosition.left;
-      toggleButton.style.display = isControlPanelMinimized ? "flex" : "none";
+      
+      // 取得按鈕位置設定
+      const position = ConfigManager.getSetting('restoreButtonPosition'); 
+      toggleButton.style.top = position.top;
+      toggleButton.style.left = position.left;
+      toggleButton.style.display = isMinimized ? "flex" : "none";
       document.body.appendChild(toggleButton);
 
-      // 添加拖動功能到切換按鈕
-      makeElementDraggable(toggleButton);
+      // 添加拖曳功能
+      dragdrop.makeElementDraggable(toggleButton);
 
-      // 如果控制面板是展開的，則根據切換按鈕位置設置控制面板位置
-      if (!isControlPanelMinimized) {
+      // 設定展開面板位置
+      if (!isMinimized) {
         const buttonRect = {
-          top: parseInt(restoreButtonPosition.top),
-          left: parseInt(restoreButtonPosition.left),
+          top: parseInt(position.top),
+          left: parseInt(position.left),
           width: 50,
           height: 50,
-          right: parseInt(restoreButtonPosition.left) + 50,
-          bottom: parseInt(restoreButtonPosition.top) + 50,
+          right: parseInt(position.left) + 50,
+          bottom: parseInt(position.top) + 50
         };
 
         const optimalPosition = calculateOptimalPanelPosition(buttonRect);
@@ -62,134 +69,74 @@
         buttonContainer.style.left = optimalPosition.position.left;
       }
 
-      // 按鈕容器內部的內容區域
+      // 添加內容區域
       const contentContainer = document.createElement("div");
-      contentContainer.className = "content-container";
+      contentContainer.className = "content-container"; 
       buttonContainer.appendChild(contentContainer);
 
-      container.appendChild(button);
-      container.appendChild(delayInput);
-      container.appendChild(label);
+      // 建立按鈕群組 
+      const buttonGroups = createButtonGroups();
+      buttonGroups.forEach(group => {
+        contentContainer.appendChild(group);
+      });
 
-      // 添加拖拽功能
-      setupDragAndDrop(container, contentContainer);
+      // 添加切換按鈕事件
+      toggleButton.onclick = () => {
+        const isMinimized = ConfigManager.getSetting('isMinimized');
+        if (!isMinimized) {
+          minimizePanel();
+        } else {
+          expandPanel(); 
+        }
 
-      return container;
+        // 點擊效果
+        toggleButton.style.transform = "scale(0.9) !important";
+        setTimeout(() => {
+          toggleButton.style.transform = "";
+        }, 150);
+      };
+
+      // 添加面板拖曳
+      dragdrop.makeElementDraggable(buttonContainer);
+
+      // 視窗大小變更處理
+      window.addEventListener("resize", handleResize);
     }
 
-    const buttons = [
-      {
-        text: autoAnswer
-          ? buttonTexts.autoAnswer.stop
-          : buttonTexts.autoAnswer.start,
-        state: autoAnswer,
-        onClick: () => {
-          autoAnswer = !autoAnswer;
-          GM_setValue("autoAnswer", autoAnswer);
-          Promise.resolve().then(() => {
-            botoperate();
-          });
-          return autoAnswer
-            ? buttonTexts.autoAnswer.stop
-            : buttonTexts.autoAnswer.start;
-        },
-        delay: answerDelay,
-        delayKey: "answerDelay",
-      },
-      {
-        text: autoNextQuestion
-          ? buttonTexts.autoNextQuestion.stop
-          : buttonTexts.autoNextQuestion.start,
-        state: autoNextQuestion,
-        onClick: () => {
-          autoNextQuestion = !autoNextQuestion;
-          GM_setValue("autoNextQuestion", autoNextQuestion);
-          Promise.resolve().then(() => {
-            botoperate();
-          });
-          return autoNextQuestion
-            ? buttonTexts.autoNextQuestion.stop
-            : buttonTexts.autoNextQuestion.start;
-        },
-        delay: nextQuestionDelay,
-        delayKey: "nextQuestionDelay",
-      },
-      {
-        text: autoNextExercise
-          ? buttonTexts.autoNextExercise.stop
-          : buttonTexts.autoNextExercise.start,
-        state: autoNextExercise,
-        onClick: () => {
-          autoNextExercise = !autoNextExercise;
-          GM_setValue("autoNextExercise", autoNextExercise);
-          Promise.resolve().then(() => {
-            botoperate();
-          });
-          return autoNextExercise
-            ? buttonTexts.autoNextExercise.stop
-            : buttonTexts.autoNextExercise.start;
-        },
-        delay: nextExerciseDelay,
-        delayKey: "nextExerciseDelay",
-      },
-      {
-        text: autoRepeatAnswers
-          ? buttonTexts.autoRepeatAnswers.stop
-          : buttonTexts.autoRepeatAnswers.start,
-        state: autoRepeatAnswers,
-        onClick: () => {
-          autoRepeatAnswers = !autoRepeatAnswers;
-          GM_setValue("autoRepeatAnswers", autoRepeatAnswers);
-          Promise.resolve().then(() => {
-            botoperate();
-          });
-          return autoRepeatAnswers
-            ? buttonTexts.autoRepeatAnswers.stop
-            : buttonTexts.autoRepeatAnswers.start;
-        },
-        delay: repeatAnswersDelay,
-        delayKey: "repeatAnswersDelay",
-      },
-    ];
+    function createButtonGroups() {
+      const buttonOrder = ConfigManager.getSetting('buttonOrder');
+      const groups = [];
 
-    // 根據保存的順序添加按鈕
-    const buttonGroups = [];
-    buttonOrder.forEach((orderIndex, i) => {
-      const btn = buttons[orderIndex];
-      const button = createButton(btn.text, btn.state, btn.onClick);
-      const group = createButtonGroup(
-        button,
-        btn.delay,
-        btn.delayKey,
-        orderIndex
-      );
-      buttonGroups.push(group);
-    });
+      buttonOrder.forEach((index) => {
+        const config = ConfigManager.getButtonConfig(index); 
+        const button = buttons.createAutoButton(config);
+        const group = buttons.createButtonGroup(button, config.delayKey, index);
+        groups.push(group);
+      });
 
-    buttonGroups.forEach((group) => {
-      contentContainer.appendChild(group);
-    });
+      return groups;
+    }
 
     // 切換按鈕的點擊事件 (統一最小化和恢復功能)
     toggleButton.onclick = function () {
-      if (!isControlPanelMinimized) {
+      if (!ConfigManager.getSetting('isMinimized')) {
         minimizePanel(); // 使用封裝的最小化函數
       } else {
         expandPanel(); // 使用封裝的展開函數
       }
 
       // 添加點擊效果
-      toggleButton.style.transform = "scale(0.9) !important";
+      toggleButton.style.transform = "scale(0.9) !重要";
       setTimeout(() => {
         toggleButton.style.transform = "";
       }, 150);
     };
 
-    makeElementDraggable(buttonContainer);
+    dragdrop.makeElementDraggable(buttonContainer);
 
     // 添加窗口大小變化的監聽，自動調整控制面板位置
     window.addEventListener("resize", function () {
-      if (!isControlPanelMinimized && buttonContainer) {
+      if (!ConfigManager.getSetting('isMinimized') && buttonContainer) {
         // 獲取當前控制面板位置
         const panelRect = buttonContainer.getBoundingClientRect();
 
@@ -209,8 +156,8 @@
 
     // 新增: 封裝最小化面板的功能
     function minimizePanel() {
-      if (!isControlPanelMinimized) {
-        console.log("執行面板最小化");
+      if (!ConfigManager.getSetting('isMinimized')) {
+        logger.debug("執行面板最小化");
 
         // 獲取面板和按鈕的位置信息
         const panelRect = buttonContainer.getBoundingClientRect();
@@ -229,36 +176,35 @@
 
         // 動畫結束後隱藏面板，顯示切換按鈕，並將按鈕放置到面板左上角
         setTimeout(() => {
-          // 先變更狀態，再處理UI變化
-          isControlPanelMinimized = true;
-          GM_setValue("isMinimized", true);
+          // 更新設定
+          ConfigManager.saveSettings('isMinimized', true);
 
           // 設置面板為隱藏
           buttonContainer.style.display = "none";
 
-          // 設置按鈕位置為面板左上角
+          // 設置按鈕位置
           toggleButton.style.top = targetTop;
           toggleButton.style.left = targetLeft;
 
-          // 將位置保存到 GM_setValue
-          restoreButtonPosition = {
-            top: targetTop,
-            left: targetLeft,
+          // 儲存位置設定
+          const newPosition = {
+              top: targetTop,
+              left: targetLeft
           };
-          GM_setValue("restoreButtonPosition", restoreButtonPosition);
+          ConfigManager.saveSettings('restoreButtonPosition', newPosition);
 
-          // 強制顯示浮動按鈕 - 特別確保它一定顯示
+          // 更新按鈕顯示
           toggleButton.textContent = "+";
           toggleButton.style.setProperty("display", "flex", "important");
 
-          console.log("面板已最小化，按鈕位置：", targetTop, targetLeft);
+          logger.debug("面板已最小化，按鈕位置：", {top: targetTop, left: targetLeft});
         }, 300);
       }
     }
 
     function expandPanel() {
-      if (isControlPanelMinimized) {
-        console.log("執行面板展開");
+      if (ConfigManager.getSetting('isMinimized')) {
+        logger.debug("執行面板展開");
 
         // 獲取切換按鈕的實際位置和尺寸
         const buttonRect = toggleButton.getBoundingClientRect();
@@ -275,16 +221,14 @@
         buttonContainer.style.setProperty("--origin-x", "0px");
         buttonContainer.style.setProperty("--origin-y", "0px");
 
-        // 先變更狀態
-        isControlPanelMinimized = false;
-        GM_setValue("isMinimized", false);
+        // 更新設定
+        ConfigManager.saveSettings('isMinimized', false);
 
-        // 保存新的面板位置到全局變數和 GM_setValue，確保下次加載時能記住位置
-        restoreButtonPosition = {
-          top: optimalPosition.position.top,
-          left: optimalPosition.position.left,
-        };
-        GM_setValue("restoreButtonPosition", restoreButtonPosition);
+        // 儲存新位置
+        ConfigManager.saveSettings('restoreButtonPosition', {
+            top: optimalPosition.position.top,
+            left: optimalPosition.position.left
+        });
 
         // 強制隱藏浮動按鈕
         toggleButton.style.setProperty("display", "none", "important");
@@ -296,11 +240,10 @@
         buttonContainer.classList.remove("panel-collapsing");
         buttonContainer.classList.add("panel-expanding");
 
-        console.log(
-          "面板已展開，位置：",
-          optimalPosition.position.top,
-          optimalPosition.position.left
-        );
+        logger.debug("面板已展開，位置：", {
+            top: optimalPosition.position.top,
+            left: optimalPosition.position.left
+        });
       }
     }
 
@@ -430,23 +373,36 @@
     // 新增: 添加點擊外部收回面板功能
     function setupOutsideClickListener() {
       document.addEventListener("mousedown", function (event) {
-        // 如果控制面板已經最小化，或者點擊的是控制面板或切換按鈕本身，則不處理
-        if (
-          isControlPanelMinimized ||
-          event.target.closest(".control-container") ||
-          event.target.closest(".toggle-button")
-        ) {
+        if (ConfigManager.getSetting('isMinimized') || 
+            event.target.closest('.control-container') ||
+            event.target.closest('.toggle-button')) {
           return;
         }
-
-        // 點擊在面板外部，觸發收回動作
         minimizePanel();
       });
+    }
+
+    function handleResize() {
+      if (!ConfigManager.getSetting('isMinimized') && buttonContainer) {
+        const panelRect = buttonContainer.getBoundingClientRect();
+        const maxX = window.innerWidth - panelRect.width;
+        const maxY = window.innerHeight - panelRect.height;
+    
+        if (panelRect.right > window.innerWidth) {
+          buttonContainer.style.left = `${maxX}px`;
+        }
+        if (panelRect.bottom > window.innerHeight) {
+          buttonContainer.style.top = `${maxY}px`;
+        }
+      }
     }
 
     function initialize() {
         try {
             logger.debug('初始化控制面板');
+            
+            // 注入樣式
+            window.w3AutoHelper.styles.injectStyles();
             
             createToggleButton();
             setupOutsideClickListener();
@@ -454,9 +410,9 @@
             // 同步面板狀態
             const isMinimized = ConfigManager.getSetting('isMinimized');
             if (isMinimized) {
-                minimizePanel(false); // false 表示不觸發動畫
+                minimizePanel();
             } else {
-                expandPanel(false);
+                expandPanel();
             }
             
             logger.info('控制面板初始化完成');
@@ -467,7 +423,7 @@
 
     function getState() {
         return {
-            isMinimized: isControlPanelMinimized,
+            isMinimized: ConfigManager.getSetting('isMinimized'),
             position: {
                 top: buttonContainer?.style.top,
                 left: buttonContainer?.style.left
