@@ -1,6 +1,6 @@
 (function () {
-  'use strict';
-  
+  "use strict";
+
   window.w3AutoHelper = window.w3AutoHelper || {};
 
   window.w3AutoHelper.core = (function () {
@@ -103,6 +103,17 @@
           manageAutoAnswers();
         }
       });
+
+      try {
+        logger.debug("初始化核心功能");
+
+        setupPageObserver();
+        exerciseWindowRefresh();
+
+        logger.info("核心功能初始化完成");
+      } catch (error) {
+        logger.error("核心功能初始化失敗", error);
+      }
     }
 
     function exerciseWindowRefresh() {

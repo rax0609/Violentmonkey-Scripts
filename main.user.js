@@ -33,28 +33,25 @@
   // 取得 logger 實例
   const logger = window.w3AutoHelper.logger;
   
-  // DOM載入後初始化
-  document.addEventListener("DOMContentLoaded", function() {
-    try {
-      logger.info('開始初始化應用程式...');
-      
-      // 設定日誌等級
-      logger.setLevel('DEBUG');  // 開發時使用
-      logger.debug('日誌系統已設定為 DEBUG 等級');
-      
-      // 初始化模組
-      // logger.info('初始化設定管理器...');
-      // window.w3AutoHelper.ConfigManager.init();
-      
-      logger.info('初始化使用者介面...');
-      window.w3AutoHelper.panel.initialize();
-      
-      logger.info('初始化核心功能...');
-      window.w3AutoHelper.core.initialize();
-      
-      logger.info('應用程式初始化完成');
-    } catch (error) {
-      logger.error('應用程式初始化失敗', error);
-    }
-  });
+  // DOM載入處理
+  function initializeApp() {
+      try {
+          logger.info('開始初始化應用程式');
+          
+          // 初始化各模組
+          window.w3AutoHelper.panel.initialize();
+          window.w3AutoHelper.core.initialize();
+          
+          logger.info('應用程式初始化完成');
+      } catch (error) {
+          logger.error('初始化失敗', error);
+      }
+  }
+
+  // DOM載入檢查和初始化
+  if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializeApp);
+  } else {
+      initializeApp();
+  }
 })();

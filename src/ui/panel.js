@@ -7,6 +7,8 @@
     const logger = window.w3AutoHelper.logger;
     const ConfigManager = window.w3AutoHelper.ConfigManager;
     const bts = window.w3AutoHelper.buttons;
+    let buttonContainer, toggleButton;
+
     function createToggleButton() {
       createGlobalStyles();
 
@@ -443,9 +445,24 @@
     }
 
     function initialize() {
-        createToggleButton();
-        setupOutsideClickListener();
-        setupWindowResizeHandler();
+        try {
+            logger.debug('初始化控制面板');
+            
+            createToggleButton();
+            setupOutsideClickListener();
+            
+            // 同步面板狀態
+            const isMinimized = ConfigManager.getSetting('isMinimized');
+            if (isMinimized) {
+                minimizePanel(false); // false 表示不觸發動畫
+            } else {
+                expandPanel(false);
+            }
+            
+            logger.info('控制面板初始化完成');
+        } catch (error) {
+            logger.error('控制面板初始化失敗', error);
+        }
     }
 
     function getState() {
