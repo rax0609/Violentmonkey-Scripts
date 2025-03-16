@@ -1,5 +1,6 @@
 (function () {
   window.w3AutoHelper = window.w3AutoHelper || {};
+
   window.w3AutoHelper.ConfigManager = (function () {
     const logger = window.w3AutoHelper.logger;
     // 私有變數
